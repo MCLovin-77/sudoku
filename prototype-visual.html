@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f0e6">
+  <title>Entrelinhas — Sudoku sem pressa</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e6;
+      --paper-deep: #e9e2d3;
+      --card: #fffdf7;
+      --ink: #26372f;
+      --muted: #68746a;
+      --line: #d6d1c3;
+      --line-strong: #899589;
+      --green: #385e4a;
+      --green-pale: #e5eee6;
+      --gold: #d59b39;
+      --gold-pale: #f7edcf;
+      --red: #a84338;
+      --red-pale: #f7e5df;
+      --shadow: 0 18px 45px #26372f12;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(ellipse at 12% 8%, #ffffff99 0, transparent 28rem),
+        var(--paper);
+      color: var(--ink);
+      font-family: "Aptos", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { color: inherit; font: inherit; }
+    .page { width: min(1360px, 100%); margin: 0 auto; padding: 28px 42px 38px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 23px; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { width: 40px; height: 40px; border: 1px solid var(--green); border-radius: 50%; display: grid; place-items: center; color: var(--green); font: 25px Georgia, serif; transform: rotate(-12deg); }
+    .brand-name { font: 700 17px Georgia, serif; letter-spacing: .05em; }
+    .brand-sub { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
+    .top-actions { display: flex; align-items: center; gap: 20px; }
+    .save-state { color: var(--muted); font-size: 12px; }
+    .icon-button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); background: transparent; border-radius: 50%; cursor: pointer; font-size: 17px; }
+    .icon-button:hover, .icon-button:focus-visible { border-color: var(--green); background: var(--card); outline: 2px solid #385e4a44; }
+    .layout { display: grid; grid-template-columns: minmax(250px, 300px) minmax(450px, 1fr); gap: clamp(32px, 6vw, 84px); padding-top: 39px; }
+    .campaign { padding-top: 2px; }
+    .eyebrow { color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+    h1 { margin: 12px 0 10px; font: 400 clamp(31px, 3.4vw, 44px)/1.05 Georgia, "Times New Roman", serif; letter-spacing: -.035em; }
+    .campaign-intro { margin: 0; max-width: 270px; color: var(--muted); font: 15px/1.6 Georgia, serif; }
+    .phase-card { margin-top: 28px; padding: 17px 18px 16px; background: var(--green); color: #fffdf7; border-radius: 4px; position: relative; overflow: hidden; }
+    .phase-card:after { content: "✳"; position: absolute; font: 82px Georgia,serif; color: #ffffff17; right: 11px; top: -24px; transform: rotate(18deg); }
+    .phase-label { color: #e5cf9a; font-size: 10px; letter-spacing: .17em; text-transform: uppercase; }
+    .phase-title { margin: 7px 0 4px; font: 22px Georgia, serif; }
+    .phase-caption { color: #e0e9df; font-size: 12px; }
+    .dots { display: flex; gap: 8px; margin-top: 16px; }
+    .dot { width: 10px; height: 10px; border: 1px solid #d6e2d4; border-radius: 50%; }
+    .dot.done { background: #e2bd70; border-color: #e2bd70; }
+    .dot.current { background: #fffdf7; outline: 2px solid #e2bd70; outline-offset: 2px; }
+    .progress-caption { display: flex; justify-content: space-between; margin-top: 9px; color: #e0e9df; font-size: 11px; }
+    .journey { margin-top: 31px; }
+    .journey-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .journey-head h2 { margin: 0; font: 19px Georgia, serif; }
+    .journey-head span { color: var(--muted); font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+    .phase-list { list-style: none; margin: 18px 0 0; padding: 0; position: relative; }
+    .phase-list:before { content: ""; position: absolute; left: 13px; top: 15px; bottom: 20px; width: 1px; background: var(--line); }
+    .phase-item { display: flex; align-items: center; gap: 13px; min-height: 43px; color: #7b847a; font-size: 13px; position: relative; }
+    .phase-item .node { display: grid; place-items: center; flex: 0 0 27px; height: 27px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--paper); font-size: 11px; z-index: 1; }
+    .phase-item.active { color: var(--ink); font-weight: 700; }
+    .phase-item.active .node { border: 2px solid var(--green); background: var(--paper); color: var(--green); box-shadow: 0 0 0 4px var(--paper); }
+    .phase-item.complete .node { border-color: var(--green); background: var(--green); color: white; }
+    .phase-item.locked .node { border-color: var(--line); color: #8b9189; }
+    .phase-kind { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 400; }
+    .soft-note { margin-top: 23px; border-top: 1px solid var(--line); padding-top: 15px; color: var(--muted); font: italic 13px/1.5 Georgia, serif; }
+
+    .game { min-width: 0; max-width: 690px; }
+    .game-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 16px; gap: 12px; }
+    .puzzle-meta { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+    .game-title { margin: 6px 0 0; font: 26px Georgia, serif; letter-spacing: -.02em; }
+    .mode-tag { border: 1px solid #b8c5b8; padding: 7px 10px; border-radius: 2px; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+    .board-wrap { padding: 9px; background: var(--card); box-shadow: var(--shadow); border: 1px solid #e5dfd1; }
+    .board { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; border: 2px solid var(--green); background: white; }
+    .cell { position: relative; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 0; border: 0; border-right: 1px solid #d8dcd5; border-bottom: 1px solid #d8dcd5; background: #fffefa; cursor: pointer; font: clamp(16px, 2.2vw, 25px) Georgia, serif; }
+    .cell:nth-child(3n) { border-right: 2px solid #778779; }
+    .cell:nth-child(9n) { border-right: 0; }
+    .cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #778779; }
+    .cell:nth-child(n+73) { border-bottom: 0; }
+    .cell.given { color: #35453a; font-weight: 700; background: #f4f2eb; }
+    .cell.entered { color: var(--green); }
+    .cell.related { background: #f4f7f0; }
+    .cell.same-number { background: #e8efe7; }
+    .cell.selected { z-index: 1; background: #f8edce; box-shadow: inset 0 0 0 2px #b77c22; }
+    .cell.conflict { color: var(--red); background: var(--red-pale); box-shadow: inset 0 0 0 2px var(--red); }
+    .cell:focus-visible { outline: 3px solid #b77c22; outline-offset: -3px; z-index: 2; }
+    .notes-grid { position: absolute; inset: 2px; display: grid; grid-template: repeat(3,1fr)/repeat(3,1fr); color: #697a6a; font: 8px/1 Arial,sans-serif; }
+    .notes-grid span { display: grid; place-items: center; }
+    .board-legend { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; padding: 10px 0 1px; color: var(--muted); font-size: 10px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-mark { width: 9px; height: 9px; border: 1px solid #899589; background: #f4f2eb; }
+    .legend-mark.selected-mark { background: #f8edce; border: 2px solid #b77c22; }
+    .legend-mark.note-mark { background: linear-gradient(135deg,#e8efe7 50%,#fffefa 50%); }
+    .game-controls { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: stretch; gap: 14px; margin-top: 17px; }
+    .number-pad { display: grid; grid-template-columns: repeat(9,1fr); gap: 6px; }
+    .num { min-width: 0; height: 45px; border: 1px solid var(--line); background: var(--card); border-radius: 3px; color: var(--green); cursor: pointer; font: 20px Georgia,serif; transition: .15s ease; }
+    .num:hover, .num:focus-visible { border-color: var(--green); background: var(--green-pale); outline: 2px solid #385e4a44; }
+    .num.used { color: #91988e; background: #ecebe4; }
+    .tool-stack { display: flex; flex-direction: column; gap: 6px; }
+    .tool-button { min-width: 76px; flex: 1; padding: 0 9px; border: 1px solid var(--line); border-radius: 3px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; }
+    .tool-button:hover, .tool-button:focus-visible { border-color: var(--green); color: var(--green); outline: 2px solid #385e4a44; }
+    .tool-button.active { border-color: var(--green); background: var(--green); color: white; }
+    .action-row { display: flex; gap: 9px; margin-top: 12px; }
+    .action { min-height: 40px; padding: 0 14px; display: inline-flex; justify-content: center; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 3px; background: transparent; cursor: pointer; font-size: 12px; }
+    .action:hover, .action:focus-visible { border-color: var(--green); outline: 2px solid #385e4a44; }
+    .action.primary { border-color: var(--green); background: var(--green); color: white; }
+    .action.primary:hover { background: #2b4d3a; }
+    .action .symbol { font-size: 15px; }
+    .message { min-height: 22px; margin: 9px 1px 0; color: var(--muted); font: 12px/1.5 Georgia,serif; }
+    .message.error { color: var(--red); }
+    .message.success { color: var(--green); }
+    .bottom-note { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .bottom-note span:first-child { display: flex; align-items: center; gap: 7px; }
+    .bottom-note strong { color: var(--ink); font-weight: 600; }
+    .rules-link { border: 0; padding: 5px; background: none; color: var(--green); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+    .toast { position: fixed; left: 50%; bottom: 24px; z-index: 5; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; max-width: calc(100% - 30px); padding: 12px 18px; border-radius: 3px; background: var(--ink); color: white; box-shadow: var(--shadow); font-size: 13px; transition: .2s; }
+    .toast.show { opacity: 1; transform: translate(-50%,0); }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 6; display: none; place-items: center; padding: 20px; background: #1e2b2499; }
+    .modal-backdrop.open { display: grid; }
+    .modal { width: min(420px,100%); padding: 27px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); }
+    .modal h2 { margin: 0 0 11px; font: 26px Georgia,serif; }
+    .modal p { color: var(--muted); font: 15px/1.6 Georgia,serif; }
+    .modal .action { margin-top: 8px; }
+    @media (max-width: 800px) {
+      .page { padding: 20px 24px 30px; }
+      .layout { grid-template-columns: minmax(0,1fr); gap: 27px; padding-top: 27px; }
+      .campaign { display: grid; grid-template-columns: minmax(0,1fr) minmax(230px,.9fr); column-gap: 24px; align-items: start; }
+      .campaign > .eyebrow, .campaign > h1, .campaign > .campaign-intro { grid-column: 1; }
+      .phase-card { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; }
+      .journey { grid-column: 1 / -1; margin-top: 22px; }
+      .phase-list { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; padding: 3px 1px 6px; }
+      .phase-list:before { left: 15px; right: 15px; top: 15px; bottom: auto; width: auto; height: 1px; }
+      .phase-item { min-width: max-content; min-height: 32px; gap: 7px; padding-right: 8px; }
+      .phase-item .node { flex-basis: 26px; height: 26px; }
+      .phase-kind { display: none; }
+      .soft-note { display: none; }
+      .game { margin: 0 auto; width: min(100%, 620px); }
+    }
+    @media (max-width: 520px) {
+      .page { padding: 15px 14px 24px; }
+      .topbar { padding-bottom: 14px; }
+      .brand-mark { width: 35px; height: 35px; }
+      .save-state { display: none; }
+      .layout { padding-top: 22px; gap: 23px; }
+      .campaign { display: block; }
+      h1 { font-size: 33px; }
+      .campaign-intro { max-width: 100%; font-size: 14px; }
+      .phase-card { margin-top: 17px; padding: 13px 15px; }
+      .phase-title { font-size: 19px; }
+      .dots { margin-top: 11px; }
+      .journey { margin-top: 17px; }
+      .journey-head h2 { font-size: 17px; }
+      .phase-list { margin-top: 10px; }
+      .game-heading { margin-bottom: 11px; }
+      .game-title { font-size: 22px; }
+      .mode-tag { padding: 6px 7px; font-size: 9px; }
+      .board-wrap { padding: 5px; }
+      .cell { font-size: clamp(15px, 5vw, 21px); }
+      .notes-grid { font-size: 7px; }
+      .board-legend { gap: 9px; font-size: 9px; }
+      .game-controls { grid-template-columns: minmax(0,1fr); gap: 8px; margin-top: 12px; }
+      .number-pad { gap: 4px; }
+      .num { height: 41px; font-size: 19px; }
+      .tool-stack { flex-direction: row; }
+      .tool-button { min-height: 36px; }
+      .action-row { gap: 6px; }
+      .action { flex: 1; padding: 0 8px; font-size: 11px; }
+      .bottom-note { margin-top: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand" aria-label="Entrelinhas, sudoku sem pressa">
+        <div class="brand-mark" aria-hidden="true">✳</div>
+        <div><div class="brand-name">ENTRELINHAS</div><span class="brand-sub">sudoku sem pressa</span></div>
+      </div>
+      <div class="top-actions">
+        <span class="save-state" id="saveState">Progresso salvo neste dispositivo</span>
+        <button class="icon-button" id="settingsButton" type="button" aria-label="Abrir opções" title="Opções">⚙</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="campaign" aria-label="Campanha">
+        <div class="eyebrow">Sua jornada • campanha 01</div>
+        <h1>Um passo<br>de cada vez.</h1>
+        <p class="campaign-intro">Um pequeno intervalo para respirar, observar e encontrar o próximo número.</p>
+        <section class="phase-card" aria-label="Fase atual">
+          <div class="phase-label">Fase 01 · em andamento</div>
+          <div class="phase-title" id="phaseTitle">Primeiras marcas</div>
+          <div class="phase-caption" id="phaseCaption">Sudoku clássico · sem cronômetro</div>
+          <div class="dots" id="phaseDots" aria-label="Progresso da fase">
+            <span class="dot current"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="progress-caption"><span id="puzzleProgress">Desafio 1 de 3</span><span id="solvedCount">0 concluídos</span></div>
+        </section>
+        <nav class="journey" aria-label="Fases da campanha">
+          <div class="journey-head"><h2>O caminho</h2><span>5 fases · 15 desafios</span></div>
+          <ol class="phase-list" id="phaseList">
+            <li class="phase-item active" aria-current="step"><span class="node">1</span><span>Primeiras marcas<span class="phase-kind">3 clássicos</span></span></li>
+            <li class="phase-item locked"><span class="node">2</span><span>Linhas de luz<span class="phase-kind">diagonal + clássico</span></span></li>
+            <li class="phase-item locked"><span class="node">3</span><span>Novas perspectivas<span class="phase-kind">clássico + diagonal</span></span></li>
+            <li class="phase-item locked"><span class="node">4</span><span>Entre diagonais<span class="phase-kind">desafios mistos</span></span></li>
+            <li class="phase-item locked"><span class="node">5</span><span>Um céu inteiro<span class="phase-kind">desafios mistos</span></span></li>
+          </ol>
+        </nav>
+        <p class="soft-note">“A resposta aparece quando damos espaço para olhar.”</p>
+      </aside>
+
+      <section class="game" aria-label="Partida de Sudoku">
+        <div class="game-heading">
+          <div><div class="puzzle-meta">Fase 01 &nbsp; / &nbsp; Desafio <span id="challengeNo">01</span></div><h2 class="game-title">O jardim quieto</h2></div>
+          <span class="mode-tag" id="modeTag">◈ Clássico</span>
+        </div>
+        <div class="board-wrap">
+          <div class="board" id="board" role="grid" aria-label="Tabuleiro de Sudoku 9 por 9"></div>
+          <div class="board-legend" aria-label="Legenda do tabuleiro">
+            <span class="legend-item"><i class="legend-mark"></i> impresso</span>
+            <span class="legend-item"><i class="legend-mark selected-mark"></i> selecionado</span>
+            <span class="legend-item"><i class="legend-mark note-mark"></i> anotações</span>
+          </div>
+        </div>
+        <div class="game-controls">
+          <div class="number-pad" id="numberPad" aria-label="Escolher número"></div>
+          <div class="tool-stack">
+            <button class="tool-button" id="noteButton" type="button" aria-pressed="false">✎ Anotar</button>
+            <button class="tool-button" id="eraseButton" type="button">⌫ Apagar</button>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="action" id="undoButton" type="button"><span class="symbol">↶</span> Desfazer</button>
+          <button class="action" id="checkButton" type="button"><span class="symbol">◉</span> Conferir</button>
+          <button class="action primary" id="hintButton" type="button"><span class="symbol">✦</span> Uma pista</button>
+        </div>
+        <p class="message" id="message" aria-live="polite">Escolha uma casa vazia para começar. O tempo é seu.</p>
+        <div class="bottom-note">
+          <span><strong>✳ Sem pressa.</strong> Sua partida fica salva automaticamente.</span>
+          <button class="rules-link" id="rulesButton" type="button">Como jogar?</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="eyebrow">Entrelinhas · guia breve</div>
+      <h2 id="modalTitle">Como jogar</h2>
+      <p>Preencha as casas vazias com números de 1 a 9. Cada número aparece uma única vez em cada linha, coluna e quadrado 3 × 3.</p>
+      <p>Selecione uma casa e depois um número. Ative <strong>Anotar</strong> para registrar possibilidades sem preencher a resposta.</p>
+      <button class="action primary" id="closeModal" type="button">Entendi</button>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const puzzle = [
+        "530070000","600195000","098000060","800060003","400803001",
+        "700020006","060000280","000419005","000080079"
+      ].join("").split("").map(Number);
+      const solution = [
+        "534678912","672195348","198342567","859761423","426853791",
+        "713924856","961537284","287419635","345286179"
+      ].join("").split("").map(Number);
+      const STORAGE_KEY = "entrelinhas-prototype-state";
+      const board = document.getElementById("board");
+      const pad = document.getElementById("numberPad");
+      const message = document.getElementById("message");
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (_) {}
+      let values = Array.isArray(saved.values) && saved.values.length === 81 ? saved.values : puzzle.slice();
+      let notes = Array.isArray(saved.notes) && saved.notes.length === 81 ? saved.notes : Array.from({length:81}, () => []);
+      let selected = Number.isInteger(saved.selected) ? saved.selected : 40;
+      let noteMode = false;
+      let history = [];
+      let completed = Number(saved.completed) || 0;
+      let toastTimer;
+      const isGiven = i => puzzle[i] !== 0;
+
+      function persist() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({values, notes, selected, completed})); } catch (_) {}
+        document.getElementById("saveState").textContent = "Progresso salvo neste dispositivo";
+      }
+      function show(text, kind = "") {
+        message.textContent = text;
+        message.className = "message" + (kind ? " " + kind : "");
+      }
+      function conflicts(i) {
+        const n = values[i];
+        if (!n) return false;
+        const row = Math.floor(i / 9), col = i % 9;
+        for (let k = 0; k < 81; k++) {
+          if (k === i || values[k] !== n) continue;
+          const r = Math.floor(k / 9), c = k % 9;
+          if (r === row || c === col || (Math.floor(r/3) === Math.floor(row/3) && Math.floor(c/3) === Math.floor(col/3))) return true;
+        }
+        return false;
+      }
+      function render() {
+        board.replaceChildren();
+        const row = Math.floor(selected / 9), col = selected % 9;
+        for (let i = 0; i < 81; i++) {
+          const r = Math.floor(i / 9), c = i % 9;
+          const cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "cell";
+          cell.setAttribute("role", "gridcell");
+          cell.setAttribute("aria-label", `Linha ${r+1}, coluna ${c+1}: ${values[i] || "vazia"}${isGiven(i) ? ", número inicial" : ""}`);
+          if (isGiven(i)) cell.classList.add("given");
+          else if (values[i]) cell.classList.add("entered");
+          if (r === row || c === col || (Math.floor(r/3) === Math.floor(row/3) && Math.floor(c/3) === Math.floor(col/3))) cell.classList.add("related");
+          if (i === selected) cell.classList.add("selected");
+          if (values[i] && values[i] === values[selected]) cell.classList.add("same-number");
+          if (conflicts(i)) cell.classList.add("conflict");
+          if (values[i]) cell.textContent = values[i];
+          else if (notes[i] && notes[i].length) {
+            const noteGrid = document.createElement("span");
+            noteGrid.className = "notes-grid";
+            for (let n = 1; n <= 9; n++) {
+              const note = document.createElement("span");
+              note.textContent = notes[i].includes(n) ? n : "";
+              noteGrid.append(note);
+            }
+            cell.append(noteGrid);
+          }
+          cell.addEventListener("click", () => { selected = i; persist(); render(); });
+          board.append(cell);
+        }
+        pad.replaceChildren();
+        for (let n = 1; n <= 9; n++) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "num" + (values.filter(v => v === n).length >= 9 ? " used" : "");
+          button.textContent = n;
+          button.setAttribute("aria-label", `Inserir número ${n}`);
+          button.addEventListener("click", () => enter(n));
+          pad.append(button);
+        }
+        updateCampaign();
+      }
+      function enter(n) {
+        if (isGiven(selected)) { show("Essa casa faz parte do puzzle. Escolha uma casa vazia."); return; }
+        history.push({values: values.slice(), notes: notes.map(a => a.slice())});
+        if (noteMode) {
+          const set = new Set(notes[selected]);
+          set.has(n) ? set.delete(n) : set.add(n);
+          notes[selected] = [...set].sort();
+          show("Possibilidade anotada. Você pode mudar de ideia quando quiser.");
+        } else {
+          values[selected] = n;
+          notes[selected] = [];
+          if (conflicts(selected)) show("Este número se repete na linha, coluna ou bloco. Você pode desfazer ou tentar outro.", "error");
+          else { show("Boa. Continue no seu ritmo."); checkComplete(); }
+        }
+        persist(); render();
+      }
+      function checkComplete() {
+        if (values.every((n,i) => n === solution[i])) {
+          completed = Math.max(completed, 1);
+          show("Puzzle concluído — muito bem observado. A próxima página já está à sua espera.", "success");
+          persist();
+          document.getElementById("puzzleProgress").textContent = "1 de 3 concluídos";
+          document.getElementById("solvedCount").textContent = "1 concluído";
+          document.querySelector("#phaseDots .dot").className = "dot done";
+          toast("Um desafio a menos. A próxima fase se abre ao completar os três.");
+        }
+      }
+      function updateCampaign() {
+        document.getElementById("challengeNo").textContent = String(Math.min(completed + 1, 3)).padStart(2,"0");
+        document.getElementById("puzzleProgress").textContent = `Desafio ${Math.min(completed + 1, 3)} de 3`;
+        document.getElementById("solvedCount").textContent = `${completed} concluídos`;
+        document.querySelectorAll("#phaseDots .dot").forEach((dot, i) => {
+          dot.className = "dot" + (i < completed ? " done" : i === completed ? " current" : "");
+        });
+      }
+      function toast(text) {
+        const el = document.getElementById("toast");
+        el.textContent = text; el.classList.add("show");
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+      }
+      function undo() {
+        const previous = history.pop();
+        if (!previous) { show("Ainda não há nenhuma jogada para desfazer."); return; }
+        values = previous.values; notes = previous.notes;
+        show("Última jogada desfeita."); persist(); render();
+      }
+      function erase() {
+        if (isGiven(selected)) { show("Essa casa faz parte do puzzle e não pode ser apagada."); return; }
+        if (!values[selected] && !notes[selected].length) { show("Esta casa já está vazia."); return; }
+        history.push({values: values.slice(), notes: notes.map(a => a.slice())});
+        values[selected] = 0; notes[selected] = [];
+        show("Casa limpa. Experimente outra possibilidade."); persist(); render();
+      }
+      document.getElementById("noteButton").addEventListener("click", e => {
+        noteMode = !noteMode;
+        e.currentTarget.classList.toggle("active", noteMode);
+        e.currentTarget.setAttribute("aria-pressed", String(noteMode));
+        show(noteMode ? "Modo de anotações ligado: escolha um número para registrar uma possibilidade." : "Modo de anotações desligado.");
+      });
+      document.getElementById("eraseButton").addEventListener("click", erase);
+      document.getElementById("undoButton").addEventListener("click", undo);
+      document.getElementById("checkButton").addEventListener("click", () => {
+        const wrong = values.some((n,i) => n && n !== solution[i]);
+        const conflict = values.some((n,i) => n && conflicts(i));
+        if (wrong || conflict) show("Há algo para rever, mas nada foi apagado. Observe a casa destacada e tente de novo.", "error");
+        else if (values.every(Boolean)) { show("Tudo certo — puzzle resolvido.", "success"); checkComplete(); }
+        else show("Até aqui, tudo certo. Ainda há casas à espera de um número.", "success");
+      });
+      document.getElementById("hintButton").addEventListener("click", () => {
+        let target = selected;
+        if (values[target]) target = values.findIndex((v,i) => !v && !isGiven(i));
+        if (target < 0) { show("Não há casas vazias para receber uma pista."); return; }
+        selected = target;
+        const r = Math.floor(target/9)+1, c = target%9+1;
+        show(`Uma pista, sem entregar tudo: linha ${r}, coluna ${c} recebe ${solution[target]}. Repare na linha, coluna e bloco.`);
+        toast(`Pista gentil: linha ${r}, coluna ${c}.`);
+        persist(); render();
+      });
+      document.getElementById("rulesButton").addEventListener("click", () => document.getElementById("modalBackdrop").classList.add("open"));
+      document.getElementById("settingsButton").addEventListener("click", () => toast("Preferências visuais e tamanho dos números: em breve."));
+      document.getElementById("closeModal").addEventListener("click", () => document.getElementById("modalBackdrop").classList.remove("open"));
+      document.getElementById("modalBackdrop").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove("open"); });
+      document.addEventListener("keydown", e => {
+        if (/^[1-9]$/.test(e.key)) enter(Number(e.key));
+        else if (e.key === "Backspace" || e.key === "Delete") erase();
+        else if (e.key.toLowerCase() === "n" && !e.ctrlKey && !e.metaKey) document.getElementById("noteButton").click();
+        else if (e.key === "Escape") document.getElementById("modalBackdrop").classList.remove("open");
+        else if (e.key.startsWith("Arrow") && document.activeElement.classList.contains("cell")) {
+          e.preventDefault();
+          const delta = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" ? -9 : 9;
+          selected = Math.max(0, Math.min(80, selected + delta)); persist(); render(); board.children[selected].focus();
+        }
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>

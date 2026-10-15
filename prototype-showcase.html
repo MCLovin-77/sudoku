@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Protótipos de Sudoku — painel de conceitos</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", sans-serif;
+      background: #eef1f5;
+      color: #182230;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 14px clamp(16px, 4vw, 48px);
+      background: #fff;
+      border-bottom: 1px solid #d9e0e8;
+    }
+
+    .heading { min-width: 180px; }
+
+    h1 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .subtitle {
+      margin: 3px 0 0;
+      color: #536273;
+      font-size: 12px;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    nav button {
+      min-height: 42px;
+      padding: 9px 14px;
+      border: 1px solid #bbc5d1;
+      border-radius: 10px;
+      background: #fff;
+      color: #243246;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    nav button[aria-pressed="true"] {
+      border-color: #3157a4;
+      background: #3157a4;
+      color: #fff;
+    }
+
+    nav button:focus-visible {
+      outline: 3px solid #ecaa35;
+      outline-offset: 3px;
+    }
+
+    main { min-height: 0; }
+
+    iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: calc(100vh - 74px);
+      border: 0;
+      background: #fff;
+    }
+
+    @media (max-width: 650px) {
+      header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      nav { display: grid; grid-template-columns: 1fr; }
+      nav button { text-align: left; }
+      iframe { min-height: calc(100vh - 220px); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="heading">
+      <h1>Sudoku — conceitos de interface</h1>
+      <p class="subtitle">Três propostas independentes para comparar</p>
+    </div>
+    <nav aria-label="Selecionar protótipo">
+      <button type="button" data-file="prototype-ux.html" aria-pressed="true">UX · jornada guiada</button>
+      <button type="button" data-file="prototype-accessibility.html" aria-pressed="false">Acessibilidade · operação inclusiva</button>
+      <button type="button" data-file="prototype-visual.html" aria-pressed="false">Visual · identidade editorial</button>
+    </nav>
+  </header>
+  <main>
+    <iframe id="prototype" title="Protótipo UX — jornada guiada" src="prototype-ux.html"></iframe>
+  </main>
+  <script>
+    const prototype = document.querySelector("#prototype");
+    const buttons = [...document.querySelectorAll("nav button")];
+
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        prototype.src = button.dataset.file;
+        prototype.title = `Protótipo ${button.textContent.trim()}`;
+        for (const item of buttons) {
+          item.setAttribute("aria-pressed", String(item === button));
+        }
+      });
+    }
+  </script>
+</body>
+</html>

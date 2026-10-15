@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sudoku — protótipo de acessibilidade</title>
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #152333;
+      background: #f2f5f7;
+      --page: #f2f5f7;
+      --panel: #fff;
+      --ink: #152333;
+      --muted: #435365;
+      --line: #758596;
+      --soft: #e9eff4;
+      --accent: #064f84;
+      --accent-ink: #fff;
+      --focus: #a33b00;
+      --error: #8b1b17;
+      --selection: #dcecf9;
+      --cell-size: min(9.4vw, 54px);
+      font-size: 16px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--ink); }
+    button, select, input { font: inherit; }
+    button, select { color: var(--ink); }
+    button {
+      min-height: 46px;
+      border: 2px solid var(--line);
+      border-radius: 5px;
+      background: var(--panel);
+      padding: .55rem .8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { background: var(--soft); }
+    :focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; z-index: 2; }
+    .skip-link {
+      position: absolute; top: -5rem; left: 1rem; z-index: 5;
+      background: var(--ink); color: var(--panel); padding: .8rem;
+    }
+    .skip-link:focus { top: 1rem; }
+    header {
+      background: var(--panel); border-bottom: 2px solid var(--line);
+      padding: .8rem clamp(1rem, 4vw, 3rem);
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .brand { font-size: 1.1rem; font-weight: 800; letter-spacing: .04em; }
+    .brand span { font-weight: 400; color: var(--muted); margin-left: .5rem; }
+    .header-actions { display: flex; gap: .5rem; }
+    .header-actions button { min-height: 42px; }
+    main { width: min(1200px, 100%); margin: 0 auto; padding: 1.5rem clamp(.75rem, 3vw, 2rem) 3rem; }
+    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.7rem; margin: 0; }
+    h2 { font-size: 1.12rem; margin: 0 0 .75rem; }
+    p { line-height: 1.5; }
+    .metadata { color: var(--muted); margin: .35rem 0 0; }
+    .layout { display: grid; grid-template-columns: minmax(310px, 1fr) minmax(285px, 360px); gap: 1.25rem; align-items: start; }
+    .panel { min-width: 0; background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: clamp(.8rem, 2vw, 1.25rem); }
+    .board-panel { min-width: 0; }
+    .board-topline { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
+    .mode-badge { border: 2px solid var(--ink); border-radius: 4px; padding: .25rem .5rem; font-weight: 700; font-size: .88rem; }
+    .board-wrap { display: flex; justify-content: center; }
+    .board {
+      display: grid; grid-template-columns: repeat(9, 1fr);
+      width: min(100%, 520px); aspect-ratio: 1;
+      border: 3px solid var(--ink); background: var(--panel);
+    }
+    .cell {
+      min-width: 0; min-height: 0; aspect-ratio: 1; border: 0;
+      border-radius: 0; padding: 0; position: relative;
+      border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      background: var(--panel); color: var(--ink);
+      font-size: var(--number-size, 1.55rem); line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cell:nth-child(3n) { border-right: 3px solid var(--ink); }
+    .cell:nth-child(9n) { border-right: 0; }
+    .cell:nth-child(n+19):nth-child(-n+27),
+    .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 3px solid var(--ink); }
+    .cell:nth-child(n+73) { border-bottom: 0; }
+    .cell.given { font-weight: 800; background: var(--soft); }
+    .cell.selected { background: var(--selection); box-shadow: inset 0 0 0 3px var(--accent); }
+    .cell.related { background-image: linear-gradient(var(--soft), var(--soft)); }
+    .cell.same-number { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+    .cell.conflict { color: var(--error); box-shadow: inset 0 0 0 3px var(--error); }
+    .cell.selected.conflict { box-shadow: inset 0 0 0 4px var(--error); }
+    .cell .notes {
+      position: absolute; inset: 2px; display: grid; grid-template-columns: repeat(3, 1fr);
+      align-content: center; font-size: clamp(.42rem, 1.5vw, .68rem); line-height: 1;
+      font-weight: 400; text-decoration: none; color: var(--muted);
+    }
+    .cell:disabled { opacity: 1; }
+    .board-help { color: var(--muted); font-size: .92rem; margin: .7rem 0 0; }
+    .status {
+      margin-top: .85rem; min-height: 52px; padding: .7rem .8rem;
+      border-left: 5px solid var(--accent); background: var(--soft); font-weight: 700;
+    }
+    .control-panel { display: grid; gap: 1rem; }
+    .control-group + .control-group { border-top: 1px solid var(--line); padding-top: 1rem; }
+    .number-pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; }
+    .number-pad button { min-height: 52px; padding: .4rem; font-size: 1.2rem; }
+    .number-pad button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
+    .action-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+    .primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .switch-row { display: flex; align-items: center; gap: .65rem; min-height: 44px; font-weight: 700; }
+    input[type="checkbox"] { width: 1.35rem; height: 1.35rem; accent-color: var(--accent); }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .setting-line { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin: .5rem 0; }
+    .setting-line select { min-height: 44px; border: 2px solid var(--line); border-radius: 4px; background: var(--panel); padding: .4rem; }
+    .progress { display: flex; align-items: center; gap: .55rem; margin-top: .5rem; color: var(--muted); font-size: .9rem; }
+    .progress span { width: 1.2rem; height: 1.2rem; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-weight: 700; }
+    .progress .complete { background: var(--ink); color: var(--panel); }
+    .key-hints { font-size: .88rem; line-height: 1.6; margin: .4rem 0 0; color: var(--muted); }
+    kbd { font-family: inherit; font-size: .82em; font-weight: 700; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: .08rem .28rem; background: var(--panel); color: var(--ink); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    body.dark {
+      color-scheme: dark; --page: #111820; --panel: #19232d; --ink: #f3f6f8; --muted: #d0dae3;
+      --line: #8796a5; --soft: #263645; --accent: #74c5ff; --accent-ink: #071827;
+      --focus: #ffd166; --error: #ff918b; --selection: #243e52;
+    }
+    body.high-contrast {
+      --page: #000; --panel: #000; --ink: #fff; --muted: #fff; --line: #fff;
+      --soft: #111; --accent: #ff0; --accent-ink: #000; --focus: #0ff;
+      --error: #ff6b6b; --selection: #282800;
+    }
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+      .board { width: min(100%, 560px); }
+      .cell { font-size: var(--number-size, 1.38rem); }
+      .page-heading { align-items: start; flex-direction: column; }
+    }
+    @media (max-width: 420px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .header-actions { width: 100%; }
+      .header-actions button { flex: 1; }
+      main { padding-inline: .55rem; }
+      .panel { padding: .65rem; }
+      .cell { font-size: var(--number-size, 1.15rem); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#game">Pular para o tabuleiro de Sudoku</a>
+  <header>
+    <div class="brand">SUDOKU <span>Protótipo acessível</span></div>
+    <div class="header-actions">
+      <button id="theme-toggle" type="button" aria-pressed="false">Tema escuro</button>
+      <button id="contrast-toggle" type="button" aria-pressed="false">Alto contraste</button>
+    </div>
+  </header>
+  <main id="game">
+    <div class="page-heading">
+      <div>
+        <h1>Prática diária</h1>
+        <p class="metadata">Desafio 1 de 3 &nbsp;·&nbsp; Tranquilo &nbsp;·&nbsp; Sem cronômetro</p>
+      </div>
+      <div>
+        <strong>Campanha · Fase 1</strong>
+        <div class="progress" aria-label="Progresso dos desafios: um de três">
+          <span class="complete" aria-label="Desafio 1 concluído">1</span><span aria-label="Desafio 2 não concluído">2</span><span aria-label="Desafio 3 não concluído">3</span>
+        </div>
+      </div>
+    </div>
+    <div class="layout">
+      <section class="panel board-panel" aria-labelledby="board-title">
+        <div class="board-topline">
+          <h2 id="board-title">Tabuleiro de Sudoku clássico</h2>
+          <span class="mode-badge">Regras clássicas</span>
+        </div>
+        <div class="board-wrap">
+          <div id="board" class="board" role="group" aria-label="Grade de Sudoku, 9 linhas e 9 colunas"></div>
+        </div>
+        <p class="board-help">Selecione uma casa e depois digite um número. Use as setas para mover-se pelo tabuleiro. As pistas iniciais não podem ser alteradas.</p>
+        <div id="status" class="status" role="status" aria-live="polite">Casa A1 selecionada. Escolha um número ou use o teclado.</div>
+      </section>
+      <aside class="panel control-panel" aria-label="Controles do jogo e configurações de acessibilidade">
+        <section class="control-group" aria-labelledby="numbers-title">
+          <h2 id="numbers-title">Inserir um número</h2>
+          <div id="number-pad" class="number-pad" aria-label="Escolher número"></div>
+          <div class="action-row" style="margin-top:.55rem">
+            <button id="notes-toggle" type="button" aria-pressed="false">Anotações: desativadas</button>
+            <button id="erase" type="button">Apagar casa</button>
+          </div>
+        </section>
+        <section class="control-group" aria-labelledby="help-title">
+          <h2 id="help-title">Controles da partida</h2>
+          <div class="action-row">
+            <button id="undo" type="button">Desfazer jogada</button>
+            <button id="hint" class="primary" type="button">Dar uma dica</button>
+          </div>
+          <p class="key-hints"><kbd>1</kbd>–<kbd>9</kbd> inserir número &nbsp; <kbd>N</kbd> anotações &nbsp; <kbd>Backspace</kbd> apagar &nbsp; <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfazer</p>
+        </section>
+        <section class="control-group" aria-labelledby="access-title">
+          <h2 id="access-title">Leitura e entrada</h2>
+          <label class="setting-line" for="entry-mode"><span>Método de entrada</span>
+            <select id="entry-mode"><option value="cell">Selecionar casa e depois número</option><option value="digit">Selecionar número e depois casas</option></select>
+          </label>
+          <label class="switch-row"><input id="check-errors" type="checkbox" checked> Verificar conflitos pelas regras</label>
+          <label for="size">Tamanho dos números: <output id="size-value">100%</output></label>
+          <input id="size" type="range" min="85" max="145" step="5" value="100" aria-label="Tamanho dos números">
+          <div class="action-row" style="margin-top:.55rem">
+            <button id="smaller" type="button" aria-label="Diminuir o tamanho dos números">A− Menor</button>
+            <button id="larger" type="button" aria-label="Aumentar o tamanho dos números">A+ Maior</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const solution = [
+        "534678912", "672195348", "198342567",
+        "859761423", "426853791", "713924856",
+        "961537284", "287419635", "345286179"
+      ];
+      const initial = [
+        "530070000", "600195000", "098000060",
+        "800060003", "400803001", "700020006",
+        "060000280", "000419005", "000080079"
+      ];
+      const boardEl = document.querySelector("#board");
+      const status = document.querySelector("#status");
+      const numberPad = document.querySelector("#number-pad");
+      const cells = [];
+      let values = initial.map(row => row.split("").map(Number));
+      const givens = initial.map(row => row.split("").map(n => n !== "0"));
+      let notes = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
+      let selected = [0, 0], selectedDigit = 0, notesMode = false, history = [];
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem("sudoku-accessible-prototype") || "{}"); } catch (_) {}
+
+      function announce(message) { status.textContent = message; }
+      function squareName(r, c) { return String.fromCharCode(65 + r) + (c + 1); }
+      function duplicates(r, c, value) {
+        if (!value) return false;
+        for (let i = 0; i < 9; i++) {
+          if ((i !== c && values[r][i] === value) || (i !== r && values[i][c] === value)) return true;
+        }
+        const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
+        for (let y = br; y < br + 3; y++) for (let x = bc; x < bc + 3; x++)
+          if ((y !== r || x !== c) && values[y][x] === value) return true;
+        return false;
+      }
+      function createBoard() {
+        for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+          const cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "cell";
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.tabIndex = r === 0 && c === 0 ? 0 : -1;
+          cell.addEventListener("click", () => {
+            if (document.querySelector("#entry-mode").value === "digit" && selectedDigit) {
+              selected = [r, c];
+              enterDigit(selectedDigit);
+            } else {
+              selected = [r, c];
+              render();
+              announce(`Casa ${squareName(r, c)} selecionada${values[r][c] ? `, valor ${values[r][c]}` : ""}.`);
+            }
+          });
+          cell.addEventListener("focus", () => { selected = [r, c]; render(); });
+          boardEl.append(cell);
+          cells.push(cell);
+        }
+        for (let n = 1; n <= 9; n++) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = n;
+          button.setAttribute("aria-label", `Inserir ${n}`);
+          button.setAttribute("aria-pressed", "false");
+          button.addEventListener("click", () => {
+            selectedDigit = n;
+            if (document.querySelector("#entry-mode").value === "digit") {
+              render();
+              announce(`Número ${n} selecionado. Escolha uma casa para inseri-lo.`);
+            } else enterDigit(n);
+          });
+          numberPad.append(button);
+        }
+      }
+      function render() {
+        cells.forEach((cell, index) => {
+          const r = Math.floor(index / 9), c = index % 9, value = values[r][c];
+          cell.className = "cell";
+          if (givens[r][c]) cell.classList.add("given");
+          if (r === selected[0] || c === selected[1] ||
+              (Math.floor(r / 3) === Math.floor(selected[0] / 3) && Math.floor(c / 3) === Math.floor(selected[1] / 3))) cell.classList.add("related");
+          if (r === selected[0] && c === selected[1]) cell.classList.add("selected");
+          if (selectedDigit && value === selectedDigit) cell.classList.add("same-number");
+          const hasConflict = document.querySelector("#check-errors").checked && duplicates(r, c, value);
+          if (hasConflict) cell.classList.add("conflict");
+          cell.tabIndex = r === selected[0] && c === selected[1] ? 0 : -1;
+          cell.setAttribute("aria-label", `Linha ${r + 1}, coluna ${c + 1}, casa ${squareName(r, c)}${givens[r][c] ? ", pista inicial" : ""}${value ? `, ${value}` : ", vazia"}${notes[r][c].size ? `, anotações ${[...notes[r][c]].join(", ")}` : ""}${hasConflict ? ", conflito" : ""}${r === selected[0] && c === selected[1] ? ", selecionada" : ""}`);
+          cell.setAttribute("aria-pressed", r === selected[0] && c === selected[1] ? "true" : "false");
+          cell.innerHTML = "";
+          if (value) cell.textContent = value;
+          else if (notes[r][c].size) {
+            const noteBox = document.createElement("span");
+            noteBox.className = "notes";
+            noteBox.setAttribute("aria-hidden", "true");
+            for (let n = 1; n <= 9; n++) {
+              const note = document.createElement("span");
+              note.textContent = notes[r][c].has(n) ? n : "";
+              noteBox.append(note);
+            }
+            cell.append(noteBox);
+          }
+        });
+        [...numberPad.children].forEach((button, i) => button.setAttribute("aria-pressed", selectedDigit === i + 1 ? "true" : "false"));
+      }
+      function persist() {
+        try {
+          localStorage.setItem("sudoku-accessible-prototype", JSON.stringify({
+            values, notes: notes.map(row => row.map(set => [...set])), selected, selectedDigit,
+            notesMode, theme: document.body.classList.contains("dark"),
+            contrast: document.body.classList.contains("high-contrast"),
+            size: document.querySelector("#size").value,
+            entryMode: document.querySelector("#entry-mode").value,
+            check: document.querySelector("#check-errors").checked
+          }));
+        } catch (_) {}
+      }
+      function enterDigit(n) {
+        const [r, c] = selected;
+        if (givens[r][c]) { announce(`A casa ${squareName(r, c)} é uma pista inicial e não pode ser alterada.`); return; }
+        history.push({ values: values.map(row => [...row]), notes: notes.map(row => row.map(set => new Set(set))) });
+        if (notesMode) {
+          if (values[r][c]) { announce("Apague a resposta antes de adicionar anotações."); history.pop(); return; }
+          notes[r][c].has(n) ? notes[r][c].delete(n) : notes[r][c].add(n);
+          announce(`Anotação ${n} ${notes[r][c].has(n) ? "adicionada à" : "removida da"} casa ${squareName(r, c)}.`);
+        } else {
+          values[r][c] = n;
+          notes[r][c].clear();
+          announce(duplicates(r, c, n) ? `Conflito: o número ${n} se repete nesta linha, coluna ou bloco. Você pode desfazer ou alterá-lo.` : `${n} inserido na casa ${squareName(r, c)}.`);
+          if (values.every((row, y) => row.every((v, x) => v === Number(solution[y][x])))) announce("Desafio concluído. Muito bem!");
+        }
+        render(); persist();
+      }
+      function move(dr, dc) {
+        selected = [(selected[0] + dr + 9) % 9, (selected[1] + dc + 9) % 9];
+        render();
+        cells[selected[0] * 9 + selected[1]].focus();
+      }
+      function undo() {
+        const previous = history.pop();
+        if (!previous) { announce("Ainda não há jogadas para desfazer."); return; }
+        values = previous.values;
+        notes = previous.notes;
+        render(); persist(); announce("Última jogada desfeita.");
+      }
+
+      createBoard();
+      if (saved.values) values = saved.values;
+      if (saved.notes) notes = saved.notes.map(row => row.map(items => new Set(items)));
+      if (saved.selected) selected = saved.selected;
+      if (saved.selectedDigit) selectedDigit = saved.selectedDigit;
+      if (saved.notesMode) notesMode = true;
+      if (saved.theme) document.body.classList.add("dark");
+      if (saved.contrast) document.body.classList.add("high-contrast");
+      if (saved.size) document.querySelector("#size").value = saved.size;
+      if (saved.entryMode) document.querySelector("#entry-mode").value = saved.entryMode;
+      if (saved.check !== undefined) document.querySelector("#check-errors").checked = saved.check;
+      document.querySelector("#notes-toggle").setAttribute("aria-pressed", String(notesMode));
+      document.querySelector("#notes-toggle").textContent = `Anotações: ${notesMode ? "ativadas" : "desativadas"}`;
+      document.querySelector("#theme-toggle").setAttribute("aria-pressed", String(!!saved.theme));
+      document.querySelector("#theme-toggle").textContent = saved.theme ? "Tema claro" : "Tema escuro";
+      document.querySelector("#contrast-toggle").setAttribute("aria-pressed", String(!!saved.contrast));
+      render();
+
+      document.querySelector("#notes-toggle").addEventListener("click", event => {
+        notesMode = !notesMode;
+        event.currentTarget.textContent = `Anotações: ${notesMode ? "ativadas" : "desativadas"}`;
+        event.currentTarget.setAttribute("aria-pressed", String(notesMode));
+        announce(`Anotações ${notesMode ? "ativadas" : "desativadas"}.`);
+        persist();
+      });
+      document.querySelector("#erase").addEventListener("click", () => {
+        const [r, c] = selected;
+        if (givens[r][c]) { announce(`A casa ${squareName(r, c)} é uma pista inicial e não pode ser apagada.`); return; }
+        history.push({ values: values.map(row => [...row]), notes: notes.map(row => row.map(set => new Set(set))) });
+        values[r][c] = 0; notes[r][c].clear(); render(); persist();
+        announce(`Casa ${squareName(r, c)} apagada.`);
+      });
+      document.querySelector("#undo").addEventListener("click", undo);
+      document.querySelector("#hint").addEventListener("click", () => {
+        const [r, c] = selected;
+        if (givens[r][c] || values[r][c]) {
+          const empty = values.flatMap((row, y) => row.map((v, x) => ({ v, y, x }))).find(item => !item.v);
+          if (!empty) { announce("O tabuleiro não tem casas vazias."); return; }
+          selected = [empty.y, empty.x];
+        }
+        const [y, x] = selected;
+        const answer = Number(solution[y][x]);
+        announce(`Dica para a casa ${squareName(y, x)}: observe a linha ${y + 1} e a coluna ${x + 1}; a resposta é ${answer}. Pressione ${answer} para inseri-la.`);
+        render();
+      });
+      document.querySelector("#check-errors").addEventListener("change", event => {
+        render(); persist();
+        announce(`Verificação de conflitos pelas regras ${event.target.checked ? "ativada" : "desativada"}.`);
+      });
+      document.querySelector("#theme-toggle").addEventListener("click", event => {
+        document.body.classList.toggle("dark");
+        const isDark = document.body.classList.contains("dark");
+        event.currentTarget.textContent = isDark ? "Tema claro" : "Tema escuro";
+        event.currentTarget.setAttribute("aria-pressed", String(isDark)); persist();
+      });
+      document.querySelector("#contrast-toggle").addEventListener("click", event => {
+        document.body.classList.toggle("high-contrast");
+        const isOn = document.body.classList.contains("high-contrast");
+        event.currentTarget.setAttribute("aria-pressed", String(isOn)); persist();
+        announce(`Alto contraste ${isOn ? "ativado" : "desativado"}.`);
+      });
+      const sizeControl = document.querySelector("#size");
+      function updateSize() {
+        const amount = Number(sizeControl.value);
+        document.documentElement.style.setProperty("--number-size", `${1.55 * amount / 100}rem`);
+        document.querySelector("#size-value").value = `${amount}%`;
+        persist();
+      }
+      sizeControl.addEventListener("input", updateSize);
+      document.querySelector("#smaller").addEventListener("click", () => { sizeControl.value = Math.max(85, Number(sizeControl.value) - 5); updateSize(); });
+      document.querySelector("#larger").addEventListener("click", () => { sizeControl.value = Math.min(145, Number(sizeControl.value) + 5); updateSize(); });
+      updateSize();
+      document.querySelector("#entry-mode").addEventListener("change", event => {
+        selectedDigit = 0; render(); persist();
+        announce(event.target.value === "digit" ? "Entrada por número selecionada. Escolha um número e depois uma casa." : "Entrada por casa selecionada. Escolha uma casa e depois um número.");
+      });
+
+      boardEl.addEventListener("keydown", event => {
+        if (event.altKey) return;
+        if (event.key === "ArrowUp") { event.preventDefault(); move(-1, 0); }
+        else if (event.key === "ArrowDown") { event.preventDefault(); move(1, 0); }
+        else if (event.key === "ArrowLeft") { event.preventDefault(); move(0, -1); }
+        else if (event.key === "ArrowRight") { event.preventDefault(); move(0, 1); }
+        else if (/^[1-9]$/.test(event.key)) { event.preventDefault(); enterDigit(Number(event.key)); }
+        else if (event.key.toLowerCase() === "n") { event.preventDefault(); document.querySelector("#notes-toggle").click(); }
+        else if (event.key === "Backspace" || event.key === "Delete") { event.preventDefault(); document.querySelector("#erase").click(); }
+        else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); undo(); }
+      });
+    })();
+  </script>
+</body>
+</html>
